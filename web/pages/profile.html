@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Perfil - RaspadinhaKanpary</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <div class="logo-icon"></div>
+        <div class="logo-text">RaspadinhaKanpary</div>
+      </div>
+      <div>
+        <span id="usernameDisplay" class="text-muted" style="margin-right: 16px;"></span>
+        <button onclick="logout()" class="btn btn-outline">Sair</button>
+      </div>
+    </div>
+
+    <div class="card balance-card">
+      <div class="balance-label">Seu Saldo</div>
+      <div class="balance-amount" id="balanceAmount">R$ 0,00</div>
+      <div id="rolloverInfo" class="hidden" style="margin-top: 12px; padding: 12px; background: rgba(243, 156, 18, 0.1); border-radius: 8px; border-left: 4px solid var(--warning);">
+        <p style="font-size: 14px; margin: 0;">
+          <strong>⚠️ Rollover pendente:</strong> <span id="rolloverAmount">R$ 0,00</span>
+        </p>
+        <p style="font-size: 12px; margin: 4px 0 0 0; color: var(--text-muted);">
+          Aposte esse valor para liberar saques
+        </p>
+      </div>
+      <button onclick="refreshBalance()" class="btn btn-outline" style="margin-top: 16px;">
+        <span id="refreshBtn">↻ Atualizar</span>
+        <span id="refreshLoading" class="loading hidden"></span>
+      </button>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>💰 Depósito</h2>
+        <p class="text-muted">Adicione fundos à sua conta via PIX</p>
+        <a href="/pages/deposit.html" class="btn btn-success mt-20" style="width: 100%;">Fazer Depósito</a>
+      </div>
+
+      <div class="card">
+        <h2>💸 Saque</h2>
+        <p class="text-muted">Retire seus ganhos via PIX</p>
+        <a href="/pages/withdrawal.html" class="btn btn-primary mt-20" style="width: 100%;">Solicitar Saque</a>
+      </div>
+
+      <div class="card">
+        <h2>🎰 Raspadinha</h2>
+        <p class="text-muted">Jogue e ganhe prêmios incríveis!</p>
+        <a href="/pages/scratch.html" class="btn btn-primary mt-20" style="width: 100%;">Jogar Agora</a>
+      </div>
+
+      <div class="card">
+        <h2>📊 Histórico</h2>
+        <p class="text-muted">Veja suas transações e jogadas</p>
+        <a href="/pages/history.html" class="btn btn-outline mt-20" style="width: 100%;">Ver Histórico</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Informações da Conta</h3>
+      <table>
+        <tr>
+          <td><strong>Usuário:</strong></td>
+          <td id="username"></td>
+        </tr>
+        <tr>
+          <td><strong>Email:</strong></td>
+          <td id="email"></td>
+        </tr>
+        <tr>
+          <td><strong>CPF:</strong></td>
+          <td id="cpf"></td>
+        </tr>
+        <tr>
+          <td><strong>Cadastro:</strong></td>
+          <td id="createdAt"></td>
+        </tr>
+      </table>
+    </div>
+
+    <div id="adminSection" class="card hidden">
+      <h3>⚙️ Painel Administrativo</h3>
+      <p class="text-muted">Você tem acesso ao painel de administração</p>
+      <a href="/pages/admin.html" class="btn btn-danger mt-20">Acessar Painel Admin</a>
+    </div>
+
+    <div class="footer">
+      <p class="text-muted" style="margin-bottom: 12px;">Dúvidas, sugestões ou suporte?</p>
+      <a href="https://t.me/Kanpary" target="_blank" class="telegram-contact">
+        <span class="telegram-icon">✈</span>
+        <span>Fale conosco no Telegram</span>
+      </a>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    requireAuth();
+
+    let userData = null;
+
+    async function loadProfile() {
+      try {
+        const profile = await AuthAPI.getProfile();
+        userData = profile.user;
+
+        document.getElementById('usernameDisplay').textContent = userData.username;
+        document.getElementById('username').textContent = userData.username;
+        document.getElementById('email').textContent = userData.email;
+        document.getElementById('cpf').textContent = formatCPF(userData.cpf);
+        document.getElementById('createdAt').textContent = formatDate(userData.created_at);
+        
+        if (userData.is_admin) {
+          document.getElementById('adminSection').classList.remove('hidden');
+        }
+
+        await refreshBalance();
+      } catch (error) {
+        showError('Erro ao carregar perfil: ' + error.message);
+        window.location.href = '/';
+      }
+    }
+
+    async function refreshBalance() {
+      const refreshBtn = document.getElementById('refreshBtn');
+      const refreshLoading = document.getElementById('refreshLoading');
+      
+      refreshBtn.classList.add('hidden');
+      refreshLoading.classList.remove('hidden');
+
+      try {
+        const result = await WalletAPI.getBalance();
+        document.getElementById('balanceAmount').textContent = formatMoney(result.balance);
+        
+        if (result.rollover_required && result.rollover_required > 0) {
+          document.getElementById('rolloverInfo').classList.remove('hidden');
+          document.getElementById('rolloverAmount').textContent = formatMoney(result.rollover_required);
+        } else {
+          document.getElementById('rolloverInfo').classList.add('hidden');
+        }
+      } catch (error) {
+        showError('Erro ao atualizar saldo: ' + error.message);
+      } finally {
+        refreshBtn.classList.remove('hidden');
+        refreshLoading.classList.add('hidden');
+      }
+    }
+
+    async function logout() {
+      try {
+        await AuthAPI.logout();
+        setAuthStatus(false);
+        window.location.href = '/';
+      } catch (error) {
+        showError('Erro ao sair: ' + error.message);
+      }
+    }
+
+    loadProfile();
+  </script>
+</body>
+</html>

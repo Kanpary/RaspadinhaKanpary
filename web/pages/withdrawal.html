@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Saque - RaspadinhaKanpary</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <div class="logo-icon"></div>
+        <div class="logo-text">RaspadinhaKanpary</div>
+      </div>
+    </div>
+
+    <div class="back-button">
+      <a href="/pages/profile.html" class="btn btn-outline">← Voltar ao Perfil</a>
+    </div>
+
+    <div class="card balance-card" style="max-width: 600px; margin: 30px auto;">
+      <div class="balance-label">Saldo Disponível</div>
+      <div class="balance-amount" id="balanceAmount">R$ 0,00</div>
+    </div>
+
+    <div id="withdrawalForm" class="card" style="max-width: 600px; margin: 30px auto;">
+      <h1>Solicitar Saque</h1>
+      <p class="text-muted mb-20">Valor mínimo: R$ 10,00</p>
+
+      <div class="alert alert-warning" style="margin-bottom: 20px;">
+        💡 <strong>Dica:</strong> Use a chave PIX cadastrada no mesmo CPF da sua conta para processamento mais rápido.
+      </div>
+
+      <div id="errorMsg" class="alert alert-danger hidden"></div>
+      <div id="successMsg" class="alert alert-success hidden"></div>
+
+      <div class="form-group">
+        <label>Valor do Saque (R$)</label>
+        <input type="number" id="amount" class="form-control" min="10" step="0.01" value="10.00" required>
+      </div>
+
+      <div class="form-group">
+        <label>Tipo de Chave PIX</label>
+        <select id="pixKeyType" class="form-control" required onchange="updatePixKeyPlaceholder()">
+          <option value="cpf">CPF</option>
+          <option value="cnpj">CNPJ</option>
+          <option value="email">E-mail</option>
+          <option value="phone">Telefone</option>
+          <option value="random">Chave Aleatória</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Chave PIX</label>
+        <input type="text" id="pixKey" class="form-control" required placeholder="Digite sua chave PIX">
+        <small class="text-muted" id="pixKeyHelp">Sua chave será preenchida automaticamente</small>
+      </div>
+
+      <button onclick="createWithdrawal()" class="btn btn-primary" style="width: 100%;">
+        <span id="withdrawalBtn">Solicitar Saque</span>
+        <span id="withdrawalLoading" class="loading hidden"></span>
+      </button>
+    </div>
+
+    <div id="statusSection" class="card hidden" style="max-width: 600px; margin: 30px auto;">
+      <h2 class="text-center">Status do Saque</h2>
+      
+      <div id="statusCheck" class="alert alert-warning text-center">
+        <p><strong>⏳ Processando saque...</strong></p>
+        <p class="text-muted">Verificando a cada 5 segundos</p>
+      </div>
+
+      <div class="mt-20">
+        <p><strong>Valor:</strong> <span id="withdrawalAmount"></span></p>
+        <p><strong>Chave PIX:</strong> <span id="withdrawalPixKey"></span></p>
+      </div>
+
+      <button onclick="backToProfile()" class="btn btn-outline mt-20" style="width: 100%;">
+        Voltar ao Perfil
+      </button>
+    </div>
+
+    <div class="footer">
+      <p class="text-muted" style="margin-bottom: 12px;">Dúvidas, sugestões ou suporte?</p>
+      <a href="https://t.me/Kanpary" target="_blank" class="telegram-contact">
+        <span class="telegram-icon">✈</span>
+        <span>Fale conosco no Telegram</span>
+      </a>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    requireAuth();
+
+    let currentTransaction = null;
+    let checkInterval = null;
+    let userProfile = null;
+
+    async function loadBalance() {
+      try {
+        const result = await WalletAPI.getBalance();
+        document.getElementById('balanceAmount').textContent = formatMoney(result.balance);
+      } catch (error) {
+        showError('Erro ao carregar saldo: ' + error.message);
+      }
+    }
+
+    async function loadUserProfile() {
+      try {
+        const profile = await AuthAPI.getProfile();
+        userProfile = profile.user;
+        updatePixKeyPlaceholder();
+      } catch (error) {
+        console.error('Erro ao carregar perfil:', error);
+      }
+    }
+
+    function updatePixKeyPlaceholder() {
+      const pixKeyType = document.getElementById('pixKeyType').value;
+      const pixKeyInput = document.getElementById('pixKey');
+      const pixKeyHelp = document.getElementById('pixKeyHelp');
+      
+      if (!userProfile) return;
+      
+      if (pixKeyType === 'cpf') {
+        pixKeyInput.value = formatCPF(userProfile.cpf);
+        pixKeyHelp.textContent = 'CPF da sua conta será usado automaticamente';
+      } else if (pixKeyType === 'email') {
+        pixKeyInput.value = userProfile.email;
+        pixKeyHelp.textContent = 'E-mail da sua conta será usado automaticamente';
+      } else {
+        pixKeyInput.value = '';
+        pixKeyHelp.textContent = 'Digite sua chave PIX manualmente';
+      }
+    }
+
+    async function createWithdrawal() {
+      const amount = parseFloat(document.getElementById('amount').value);
+      const pixKeyType = document.getElementById('pixKeyType').value;
+      const pixKey = document.getElementById('pixKey').value;
+      const errorMsg = document.getElementById('errorMsg');
+      const withdrawalBtn = document.getElementById('withdrawalBtn');
+      const withdrawalLoading = document.getElementById('withdrawalLoading');
+
+      if (!amount || amount < 10) {
+        errorMsg.textContent = 'Valor mínimo de saque é R$ 10,00';
+        errorMsg.classList.remove('hidden');
+        return;
+      }
+
+      if (!pixKey) {
+        errorMsg.textContent = 'Por favor, informe sua chave PIX';
+        errorMsg.classList.remove('hidden');
+        return;
+      }
+
+      errorMsg.classList.add('hidden');
+      withdrawalBtn.classList.add('hidden');
+      withdrawalLoading.classList.remove('hidden');
+
+      try {
+        const result = await WithdrawalAPI.create({ amount, pixKeyType, pixKey });
+        currentTransaction = result.transaction;
+
+        // Hide form, show status
+        document.getElementById('withdrawalForm').classList.add('hidden');
+        document.getElementById('statusSection').classList.remove('hidden');
+
+        document.getElementById('withdrawalAmount').textContent = formatMoney(amount);
+        document.getElementById('withdrawalPixKey').textContent = pixKey;
+
+        // Start checking status
+        startStatusCheck();
+      } catch (error) {
+        errorMsg.textContent = error.message;
+        errorMsg.classList.remove('hidden');
+        withdrawalBtn.classList.remove('hidden');
+        withdrawalLoading.classList.add('hidden');
+      }
+    }
+
+    function startStatusCheck() {
+      checkInterval = setInterval(async () => {
+        try {
+          const result = await WithdrawalAPI.check(currentTransaction.id);
+          
+          if (result.status === 'paid') {
+            clearInterval(checkInterval);
+            document.getElementById('statusCheck').className = 'alert alert-success text-center';
+            document.getElementById('statusCheck').innerHTML = 
+              '<p><strong>✅ Saque aprovado e processado!</strong></p><p class="text-muted">O dinheiro foi enviado para sua chave PIX</p>';
+          } else if (result.status === 'failed' || result.status === 'canceled') {
+            clearInterval(checkInterval);
+            document.getElementById('statusCheck').className = 'alert alert-danger text-center';
+            document.getElementById('statusCheck').innerHTML = 
+              '<p><strong>❌ Saque falhou ou foi cancelado</strong></p><p class="text-muted">O valor foi devolvido ao seu saldo</p>';
+            await loadBalance();
+          }
+        } catch (error) {
+          console.error('Erro ao verificar status:', error);
+        }
+      }, 5000); // Check every 5 seconds
+    }
+
+    function backToProfile() {
+      if (checkInterval) {
+        clearInterval(checkInterval);
+      }
+      window.location.href = '/pages/profile.html';
+    }
+
+    loadBalance();
+    loadUserProfile();
+  </script>
+</body>
+</html>

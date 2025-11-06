@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Histórico - RaspadinhaKanpary</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <div class="logo-icon"></div>
+        <div class="logo-text">RaspadinhaKanpary</div>
+      </div>
+    </div>
+
+    <div class="back-button">
+      <a href="/pages/profile.html" class="btn btn-outline">← Voltar ao Perfil</a>
+    </div>
+
+    <div class="card">
+      <h1>📊 Histórico de Transações</h1>
+      <p class="text-muted mb-20">Veja suas últimas transações e jogadas</p>
+
+      <div id="transactionsTable"></div>
+    </div>
+
+    <div class="card">
+      <h2>🎰 Histórico de Jogadas</h2>
+      
+      <div id="gameHistoryTable"></div>
+    </div>
+
+    <div class="footer">
+      <p class="text-muted" style="margin-bottom: 12px;">Dúvidas, sugestões ou suporte?</p>
+      <a href="https://t.me/Kanpary" target="_blank" class="telegram-contact">
+        <span class="telegram-icon">✈</span>
+        <span>Fale conosco no Telegram</span>
+      </a>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    requireAuth();
+
+    async function loadTransactions() {
+      try {
+        const result = await WalletAPI.getTransactions(20);
+        
+        if (result.transactions.length === 0) {
+          document.getElementById('transactionsTable').innerHTML = 
+            '<p class="text-center text-muted">Nenhuma transação encontrada</p>';
+          return;
+        }
+
+        let html = `
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Tipo</th>
+                <th>Valor</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        result.transactions.forEach(tx => {
+          const typeLabel = tx.type === 'deposit' ? '💰 Depósito' : '💸 Saque';
+          const statusClass = `status-${tx.status}`;
+          const statusLabel = {
+            pending: 'Pendente',
+            paid: 'Pago',
+            failed: 'Falhou',
+            canceled: 'Cancelado',
+            refunded: 'Reembolsado'
+          }[tx.status] || tx.status;
+
+          html += `
+            <tr>
+              <td>${formatDate(tx.created_at)}</td>
+              <td>${typeLabel}</td>
+              <td>${formatMoney(tx.amount)}</td>
+              <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table>';
+        document.getElementById('transactionsTable').innerHTML = html;
+      } catch (error) {
+        document.getElementById('transactionsTable').innerHTML = 
+          `<p class="text-center text-muted">Erro ao carregar transações: ${error.message}</p>`;
+      }
+    }
+
+    async function loadGameHistory() {
+      try {
+        const result = await GameAPI.getHistory(20);
+        
+        if (result.rounds.length === 0) {
+          document.getElementById('gameHistoryTable').innerHTML = 
+            '<p class="text-center text-muted">Nenhuma jogada encontrada</p>';
+          return;
+        }
+
+        let html = `
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Aposta</th>
+                <th>Prêmio</th>
+                <th>Multiplicador</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        result.rounds.forEach(round => {
+          const multiplier = round.multiplier || 0;
+          const result = round.prize_amount > 0 ? '🎉' : '❌';
+
+          html += `
+            <tr>
+              <td>${formatDate(round.created_at)}</td>
+              <td>${formatMoney(round.bet_amount)}</td>
+              <td>${result} ${formatMoney(round.prize_amount)}</td>
+              <td>${multiplier.toFixed(2)}x</td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table>';
+        document.getElementById('gameHistoryTable').innerHTML = html;
+      } catch (error) {
+        document.getElementById('gameHistoryTable').innerHTML = 
+          `<p class="text-center text-muted">Erro ao carregar histórico: ${error.message}</p>`;
+      }
+    }
+
+    loadTransactions();
+    loadGameHistory();
+  </script>
+</body>
+</html>

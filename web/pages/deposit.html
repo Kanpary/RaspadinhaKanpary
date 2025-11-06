@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Depósito - RaspadinhaKanpary</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <div class="logo-icon"></div>
+        <div class="logo-text">RaspadinhaKanpary</div>
+      </div>
+    </div>
+
+    <div class="back-button">
+      <a href="/pages/profile.html" class="btn btn-outline">← Voltar ao Perfil</a>
+    </div>
+
+    <div id="depositForm" class="card" style="max-width: 600px; margin: 30px auto;">
+      <h1>Fazer Depósito</h1>
+      <p class="text-muted mb-20">Valor mínimo: R$ 6,00</p>
+
+      <div id="errorMsg" class="alert alert-danger hidden"></div>
+
+      <div class="form-group">
+        <label>Valor do Depósito (R$)</label>
+        <input type="number" id="amount" class="form-control" min="6" step="0.01" value="10.00" required>
+      </div>
+
+      <button onclick="createDeposit()" class="btn btn-success" style="width: 100%;">
+        <span id="depositBtn">Criar Depósito</span>
+        <span id="depositLoading" class="loading hidden"></span>
+      </button>
+    </div>
+
+    <div id="qrCodeSection" class="card hidden" style="max-width: 600px; margin: 30px auto;">
+      <h2 class="text-center">PIX QR Code</h2>
+      <div class="text-center mb-20">
+        <div class="balance-amount" style="font-size: 32px; margin: 10px 0;" id="depositAmount">R$ 0,00</div>
+        <p class="text-muted">Valor do depósito</p>
+      </div>
+
+      <div id="statusCheck" class="alert alert-warning text-center">
+        <p><strong>⏳ Aguardando pagamento...</strong></p>
+        <p class="text-muted" id="timeRemaining">Tempo restante: 5:00</p>
+        <p class="text-muted" style="font-size: 12px;">Verificando a cada 5 segundos</p>
+      </div>
+
+      <div id="qrCodeImage" class="text-center mb-20"></div>
+
+      <div class="form-group">
+        <label>Código PIX (Copia e Cola)</label>
+        <textarea id="pixCode" class="form-control" rows="3" readonly></textarea>
+      </div>
+
+      <button onclick="copyPixCode()" class="btn btn-primary" style="width: 100%;">
+        📋 Copiar Código PIX
+      </button>
+
+      <button onclick="cancelDeposit()" class="btn btn-danger mt-20" style="width: 100%;">
+        Cancelar
+      </button>
+    </div>
+
+    <div class="footer">
+      <p class="text-muted" style="margin-bottom: 12px;">Dúvidas, sugestões ou suporte?</p>
+      <a href="https://t.me/Kanpary" target="_blank" class="telegram-contact">
+        <span class="telegram-icon">✈</span>
+        <span>Fale conosco no Telegram</span>
+      </a>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    requireAuth();
+
+    let currentTransaction = null;
+    let checkInterval = null;
+    let countdownInterval = null;
+    let expiresAt = null;
+
+    async function createDeposit() {
+      const amount = document.getElementById('amount').value;
+      const errorMsg = document.getElementById('errorMsg');
+      const depositBtn = document.getElementById('depositBtn');
+      const depositLoading = document.getElementById('depositLoading');
+
+      if (!amount || amount < 6) {
+        errorMsg.textContent = 'Valor mínimo de depósito é R$ 6,00';
+        errorMsg.classList.remove('hidden');
+        return;
+      }
+
+      errorMsg.classList.add('hidden');
+      depositBtn.classList.add('hidden');
+      depositLoading.classList.remove('hidden');
+
+      try {
+        const result = await DepositAPI.create(parseFloat(amount));
+        currentTransaction = result.transaction;
+        expiresAt = new Date(result.expires_at);
+
+        // Hide form, show QR code
+        document.getElementById('depositForm').classList.add('hidden');
+        document.getElementById('qrCodeSection').classList.remove('hidden');
+
+        // Display amount
+        document.getElementById('depositAmount').textContent = formatMoney(parseFloat(amount));
+
+        // Display QR code
+        if (result.qr_code_base64) {
+          document.getElementById('qrCodeImage').innerHTML = 
+            `<img src="data:image/png;base64,${result.qr_code_base64}" style="max-width: 300px; border-radius: 12px; box-shadow: 0 4px 12px var(--shadow);">`;
+        } else {
+          document.getElementById('qrCodeImage').innerHTML = 
+            '<p class="text-danger">QR Code não disponível no momento</p>';
+        }
+
+        // Display PIX code
+        document.getElementById('pixCode').value = result.qr_code || 'Código PIX não disponível';
+
+        // Start checking status and countdown
+        startStatusCheck();
+        startCountdown();
+      } catch (error) {
+        errorMsg.textContent = error.message;
+        errorMsg.classList.remove('hidden');
+        depositBtn.classList.remove('hidden');
+        depositLoading.classList.add('hidden');
+      }
+    }
+
+    function startCountdown() {
+      countdownInterval = setInterval(() => {
+        const now = new Date();
+        const diff = expiresAt - now;
+        
+        if (diff <= 0) {
+          clearInterval(countdownInterval);
+          clearInterval(checkInterval);
+          document.getElementById('statusCheck').className = 'alert alert-danger text-center';
+          document.getElementById('statusCheck').innerHTML = 
+            '<p><strong>⏰ Tempo expirado</strong></p><p class="text-muted">Este QR Code não é mais válido</p>';
+          document.getElementById('timeRemaining').textContent = 'Tempo expirado';
+          return;
+        }
+        
+        const minutes = Math.floor(diff / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+        document.getElementById('timeRemaining').textContent = 
+          `Tempo restante: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+      }, 1000);
+    }
+
+    function copyPixCode() {
+      const pixCode = document.getElementById('pixCode');
+      pixCode.select();
+      document.execCommand('copy');
+      showSuccess('Código PIX copiado!');
+    }
+
+    function startStatusCheck() {
+      checkInterval = setInterval(async () => {
+        try {
+          const result = await DepositAPI.check(currentTransaction.id);
+          
+          if (result.status === 'paid') {
+            clearInterval(checkInterval);
+            document.getElementById('statusCheck').className = 'alert alert-success text-center';
+            document.getElementById('statusCheck').innerHTML = 
+              '<p><strong>✅ Pagamento confirmado!</strong></p><p class="text-muted">Redirecionando...</p>';
+            
+            setTimeout(() => {
+              window.location.href = '/pages/scratch.html';
+            }, 2000);
+          } else if (result.status === 'failed') {
+            clearInterval(checkInterval);
+            document.getElementById('statusCheck').className = 'alert alert-danger text-center';
+            document.getElementById('statusCheck').innerHTML = 
+              '<p><strong>❌ Pagamento falhou</strong></p>';
+          }
+        } catch (error) {
+          console.error('Erro ao verificar status:', error);
+        }
+      }, 5000); // Check every 5 seconds
+    }
+
+    function cancelDeposit() {
+      if (checkInterval) {
+        clearInterval(checkInterval);
+      }
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+      }
+      window.location.href = '/pages/profile.html';
+    }
+  </script>
+</body>
+</html>

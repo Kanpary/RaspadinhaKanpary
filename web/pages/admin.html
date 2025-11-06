@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Admin - RaspadinhaKanpary</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <div class="logo-icon"></div>
+        <div class="logo-text">RaspadinhaKanpary - Admin</div>
+      </div>
+      <button onclick="location.href='/pages/profile.html'" class="btn btn-outline">Voltar ao Perfil</button>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>⚙️ Configuração RTP</h2>
+        <p class="text-muted">Return to Player (%)</p>
+        
+        <div class="form-group">
+          <label>RTP Atual: <strong id="currentRtp">--</strong>%</label>
+          <input type="number" id="rtpInput" class="form-control" min="50" max="99" step="0.1" value="95.0">
+        </div>
+
+        <button onclick="updateRTP()" class="btn btn-primary" style="width: 100%;">
+          <span id="rtpBtn">Atualizar RTP</span>
+          <span id="rtpLoading" class="loading hidden"></span>
+        </button>
+      </div>
+
+      <div class="card">
+        <h2>💰 Saldo BullsPay</h2>
+        <p class="text-muted">Consultar saldo na gateway</p>
+        
+        <div id="bullspayBalance">
+          <p><strong>Total:</strong> <span id="totalBalance">--</span></p>
+          <p><strong>Disponível:</strong> <span id="availableBalance">--</span></p>
+          <p><strong>Bloqueado:</strong> <span id="blockedBalance">--</span></p>
+        </div>
+
+        <button onclick="loadBullsPayBalance()" class="btn btn-success" style="width: 100%;">
+          <span id="balanceBtn">↻ Atualizar</span>
+          <span id="balanceLoading" class="loading hidden"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📋 Transações do Sistema</h2>
+      
+      <div style="margin-bottom: 16px;">
+        <label>Filtrar por Status:</label>
+        <select id="transactionFilter" onchange="loadTransactions()" class="form-control">
+          <option value="all">Todas</option>
+          <option value="pending">Pendentes</option>
+          <option value="paid">Pagas</option>
+          <option value="failed">Falhadas</option>
+          <option value="refunded">Reembolsadas</option>
+        </select>
+      </div>
+
+      <div id="transactionsTable"></div>
+    </div>
+
+    <div class="card">
+      <h2>🏦 Transações BullsPay</h2>
+      
+      <div style="margin-bottom: 16px;">
+        <label>Filtrar por Status:</label>
+        <select id="bullspayTxFilter" onchange="loadBullsPayTransactions()" class="form-control">
+          <option value="all">Todas</option>
+          <option value="pending">Pendentes</option>
+          <option value="paid">Pagas</option>
+          <option value="failed">Falhadas</option>
+        </select>
+      </div>
+
+      <div id="bullspayTransactionsTable"></div>
+
+      <button onclick="loadBullsPayTransactions()" class="btn btn-outline mt-20">↻ Recarregar</button>
+    </div>
+
+    <div class="card">
+      <h2>💸 Saques BullsPay</h2>
+      
+      <div style="margin-bottom: 16px;">
+        <label>Filtrar por Status:</label>
+        <select id="bullspayWdFilter" onchange="loadBullsPayWithdrawals()" class="form-control">
+          <option value="all">Todos</option>
+          <option value="pending">Pendentes</option>
+          <option value="paid">Pagos</option>
+          <option value="failed">Falhados</option>
+          <option value="canceled">Cancelados</option>
+        </select>
+      </div>
+
+      <div id="bullspayWithdrawalsTable"></div>
+
+      <button onclick="loadBullsPayWithdrawals()" class="btn btn-outline mt-20">↻ Recarregar</button>
+    </div>
+
+    <div class="card">
+      <h2>👥 Usuários Cadastrados</h2>
+      <p class="text-muted">Visualizar credenciais e informações dos usuários</p>
+      
+      <div id="usersTable"></div>
+
+      <button onclick="loadUsers()" class="btn btn-outline mt-20">↻ Recarregar</button>
+    </div>
+
+    <div class="card">
+      <h2>💰 Saques Pendentes de Aprovação</h2>
+      <p class="text-muted">Aprovar ou rejeitar solicitações de saque</p>
+      
+      <div id="pendingWithdrawalsTable"></div>
+
+      <button onclick="loadPendingWithdrawals()" class="btn btn-outline mt-20">↻ Recarregar</button>
+    </div>
+
+    <div class="card">
+      <h2>🚨 Alertas de Fraude</h2>
+      <p class="text-muted">Monitorar atividades suspeitas e possíveis fraudes</p>
+      
+      <div id="fraudAlertsTable"></div>
+
+      <button onclick="loadFraudAlerts()" class="btn btn-outline mt-20">↻ Recarregar</button>
+    </div>
+
+    <div class="card">
+      <h2>🔔 Gerenciar Webhooks BullsPay</h2>
+      <p class="text-muted">Configure webhooks para receber notificações em tempo real</p>
+      
+      <div class="form-group">
+        <label>URL do Webhook</label>
+        <input type="url" id="webhookUrl" class="form-control" placeholder="https://seu-dominio.com/webhook/bullspay" value="">
+      </div>
+
+      <div style="margin: 12px 0;">
+        <label style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" id="sendTransactionEvent" checked>
+          <span>Enviar eventos de transações (pagamentos)</span>
+        </label>
+      </div>
+
+      <div style="margin: 12px 0;">
+        <label style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" id="sendWithdrawEvent">
+          <span>Enviar eventos de saques</span>
+        </label>
+      </div>
+
+      <button onclick="createWebhook()" class="btn btn-success" style="width: 100%; margin-bottom: 20px;">
+        <span id="createWebhookBtn">➕ Criar Webhook</span>
+        <span id="createWebhookLoading" class="loading hidden"></span>
+      </button>
+
+      <h3>Webhooks Configurados</h3>
+      <div id="webhooksTable"></div>
+
+      <button onclick="loadWebhooks()" class="btn btn-outline mt-20">↻ Recarregar</button>
+    </div>
+
+    <div class="footer">
+      <p class="text-muted" style="margin-bottom: 12px;">Suporte técnico?</p>
+      <a href="https://t.me/Kanpary" target="_blank" class="telegram-contact">
+        <span class="telegram-icon">✈</span>
+        <span>Fale conosco no Telegram</span>
+      </a>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    requireAuth();
+
+    // Check admin access
+    AuthAPI.getProfile().then(profile => {
+      if (!profile.user.is_admin) {
+        showError('Acesso negado');
+        window.location.href = '/pages/profile.html';
+      }
+    });
+
+    async function loadRTP() {
+      try {
+        const result = await AdminAPI.getRTP();
+        document.getElementById('currentRtp').textContent = result.rtp_percentage.toFixed(1);
+        document.getElementById('rtpInput').value = result.rtp_percentage;
+      } catch (error) {
+        console.error('Erro ao carregar RTP:', error);
+      }
+    }
+
+    async function updateRTP() {
+      const rtpValue = parseFloat(document.getElementById('rtpInput').value);
+      const rtpBtn = document.getElementById('rtpBtn');
+      const rtpLoading = document.getElementById('rtpLoading');
+
+      if (rtpValue < 50 || rtpValue > 99) {
+        showError('RTP deve estar entre 50% e 99%');
+        return;
+      }
+
+      rtpBtn.classList.add('hidden');
+      rtpLoading.classList.remove('hidden');
+
+      try {
+        await AdminAPI.setRTP(rtpValue);
+        document.getElementById('currentRtp').textContent = rtpValue.toFixed(1);
+        showSuccess('RTP atualizado com sucesso!');
+      } catch (error) {
+        showError('Erro ao atualizar RTP: ' + error.message);
+      } finally {
+        rtpBtn.classList.remove('hidden');
+        rtpLoading.classList.add('hidden');
+      }
+    }
+
+    async function loadBullsPayBalance() {
+      const balanceBtn = document.getElementById('balanceBtn');
+      const balanceLoading = document.getElementById('balanceLoading');
+
+      balanceBtn.classList.add('hidden');
+      balanceLoading.classList.remove('hidden');
+
+      try {
+        const result = await AdminAPI.getBullsPayBalance();
+        document.getElementById('totalBalance').textContent = formatMoney(result.balance / 100);
+        document.getElementById('availableBalance').textContent = formatMoney(result.available_balance / 100);
+        document.getElementById('blockedBalance').textContent = formatMoney(result.blocked_balance / 100);
+      } catch (error) {
+        showError('Erro ao carregar saldo: ' + error.message);
+      } finally {
+        balanceBtn.classList.remove('hidden');
+        balanceLoading.classList.add('hidden');
+      }
+    }
+
+    async function loadTransactions() {
+      const status = document.getElementById('transactionFilter').value;
+
+      try {
+        const result = await AdminAPI.getTransactions(status, 50);
+        
+        if (result.transactions.length === 0) {
+          document.getElementById('transactionsTable').innerHTML = 
+            '<p class="text-center text-muted">Nenhuma transação encontrada</p>';
+          return;
+        }
+
+        let html = `
+          <table>
+            <thead>
+              <tr>
+                <th>Usuário</th>
+                <th>Tipo</th>
+                <th>Valor</th>
+                <th>Status</th>
+                <th>Data</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        result.transactions.forEach(tx => {
+          const typeLabel = tx.type === 'deposit' ? '💰 Depósito' : '💸 Saque';
+          const statusClass = `status-${tx.status}`;
+          const statusLabel = {
+            pending: 'Pendente',
+            paid: 'Pago',
+            failed: 'Falhou',
+            canceled: 'Cancelado',
+            refunded: 'Reembolsado'
+          }[tx.status] || tx.status;
+
+          const refundBtn = tx.type === 'deposit' && tx.status === 'paid' 
+            ? `<button onclick="refundTransaction('${tx.id}')" class="btn btn-danger" style="padding: 6px 12px; font-size: 14px;">Reembolsar</button>`
+            : '';
+
+          html += `
+            <tr>
+              <td>${tx.username}<br><small class="text-muted">${tx.email}</small></td>
+              <td>${typeLabel}</td>
+              <td>${formatMoney(tx.amount)}</td>
+              <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+              <td>${formatDate(tx.created_at)}</td>
+              <td>${refundBtn}</td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table>';
+        document.getElementById('transactionsTable').innerHTML = html;
+      } catch (error) {
+        document.getElementById('transactionsTable').innerHTML = 
+          `<p class="text-center text-muted">Erro: ${error.message}</p>`;
+      }
+    }
+
+    async function refundTransaction(transactionId) {
+      if (!confirm('Tem certeza que deseja reembolsar esta transação?')) {
+        return;
+      }
+
+      try {
+        await AdminAPI.refund(transactionId);
+        showSuccess('Transação reembolsada com sucesso!');
+        await loadTransactions();
+      } catch (error) {
+        showError('Erro ao reembolsar: ' + error.message);
+      }
+    }
+
+    async function loadBullsPayTransactions() {
+      const status = document.getElementById('bullspayTxFilter').value;
+
+      try {
+        const result = await AdminAPI.getBullsPayTransactions(1, 20, status);
+        
+        if (result.transactions.length === 0) {
+          document.getElementById('bullspayTransactionsTable').innerHTML = 
+            '<p class="text-center text-muted">Nenhuma transação encontrada</p>';
+          return;
+        }
+
+        let html = `
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Valor</th>
+                <th>Comprador</th>
+                <th>Status</th>
+                <th>Data</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        result.transactions.forEach(tx => {
+          const statusClass = `status-${tx.status}`;
+          const statusLabel = tx.status.toUpperCase();
+
+          html += `
+            <tr>
+              <td><small>${tx.unic_id.substring(0, 8)}...</small></td>
+              <td>${formatMoney(tx.total_value / 100)}</td>
+              <td>${tx.buyerData?.buyer_name || 'N/A'}<br><small class="text-muted">${tx.buyerData?.buyer_email || ''}</small></td>
+              <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+              <td>${formatDate(tx.created_at)}</td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table>';
+        document.getElementById('bullspayTransactionsTable').innerHTML = html;
+      } catch (error) {
+        document.getElementById('bullspayTransactionsTable').innerHTML = 
+          `<p class="text-center text-muted">Erro: ${error.message}</p>`;
+      }
+    }
+
+    async function loadBullsPayWithdrawals() {
+      const status = document.getElementById('bullspayWdFilter').value;
+
+      try {
+        const result = await AdminAPI.getBullsPayWithdrawals(1, 20, status);
+        
+        if (result.withdrawals.length === 0) {
+          document.getElementById('bullspayWithdrawalsTable').innerHTML = 
+            '<p class="text-center text-muted">Nenhum saque encontrado</p>';
+          return;
+        }
+
+        let html = `
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Valor</th>
+                <th>Chave PIX</th>
+                <th>Status</th>
+                <th>Data</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        result.withdrawals.forEach(wd => {
+          const statusClass = `status-${wd.status}`;
+          const statusLabel = wd.status.toUpperCase();
+
+          html += `
+            <tr>
+              <td><small>${wd.unic_id.substring(0, 8)}...</small></td>
+              <td>${formatMoney(wd.amount / 100)}</td>
+              <td>${wd.pix_key_type}: ${wd.pix_key}</td>
+              <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+              <td>${formatDate(wd.created_at)}</td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table>';
+        document.getElementById('bullspayWithdrawalsTable').innerHTML = html;
+      } catch (error) {
+        document.getElementById('bullspayWithdrawalsTable').innerHTML = 
+          `<p class="text-center text-muted">Erro: ${error.message}</p>`;
+      }
+    }
+
+    async function loadUsers() {
+      try {
+        const result = await AdminAPI.getUsers(100);
+        
+        if (result.users.length === 0) {
+          document.getElementById('usersTable').innerHTML = 
+            '<p class="text-center text-muted">Nenhum usuário encontrado</p>';
+          return;
+        }
+
+        let html = `
+          <table>
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>CPF</th>
+                <th>Saldo</th>
+                <th>Rollover</th>
+                <th>Primeiro Depósito</th>
+                <th>Cadastro</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        result.users.forEach(user => {
+          html += `
+            <tr>
+              <td>${user.username}${user.is_admin ? ' <span class="status-badge status-paid">ADMIN</span>' : ''}</td>
+              <td>${user.email}</td>
+              <td>${formatCPF(user.cpf)}</td>
+              <td>${formatMoney(parseFloat(user.balance))}</td>
+              <td>${formatMoney(parseFloat(user.rollover_required))}</td>
+              <td>${user.first_deposit_made ? '✅ Sim' : '❌ Não'}</td>
+              <td>${formatDate(user.created_at)}</td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table>';
+        document.getElementById('usersTable').innerHTML = html;
+      } catch (error) {
+        document.getElementById('usersTable').innerHTML = 
+          `<p class="text-center text-muted">Erro: ${error.message}</p>`;
+      }
+    }
+
+    async function loadPendingWithdrawals() {
+      try {
+        const result = await AdminAPI.getTransactions('pending_approval', 50);
+        
+        const pendingWithdrawals = result.transactions.filter(t => t.type === 'withdrawal');
+        
+        if (pendingWithdrawals.length === 0) {
+          document.getElementById('pendingWithdrawalsTable').innerHTML = 
+            '<p class="text-center text-muted">Nenhum saque pendente</p>';
+          return;
+        }
+
+        let html = `
+          <table>
+            <thead>
+              <tr>
+                <th>Usuário</th>
+                <th>Valor</th>
+                <th>Chave PIX</th>
+                <th>Notas</th>
+                <th>Data</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        pendingWithdrawals.forEach(tx => {
+          html += `
+            <tr>
+              <td>${tx.username}<br><small class="text-muted">${tx.email}</small></td>
+              <td>${formatMoney(tx.amount)}</td>
+              <td>${tx.pix_key_type || 'N/A'}: ${tx.pix_key || 'N/A'}</td>
+              <td><small>${tx.admin_notes || '-'}</small></td>
+              <td>${formatDate(tx.created_at)}</td>
+              <td>
+                <button onclick="approveWithdrawal('${tx.id}')" class="btn btn-success" style="padding: 6px 12px; font-size: 14px; margin-right: 5px;">✅ Aprovar</button>
+                <button onclick="rejectWithdrawal('${tx.id}')" class="btn btn-danger" style="padding: 6px 12px; font-size: 14px;">❌ Rejeitar</button>
+              </td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table>';
+        document.getElementById('pendingWithdrawalsTable').innerHTML = html;
+      } catch (error) {
+        document.getElementById('pendingWithdrawalsTable').innerHTML = 
+          `<p class="text-center text-muted">Erro: ${error.message}</p>`;
+      }
+    }
+
+    async function approveWithdrawal(id) {
+      if (!confirm('Tem certeza que deseja aprovar este saque?')) {
+        return;
+      }
+
+      try {
+        await AdminAPI.approveWithdrawal(id);
+        showSuccess('Saque aprovado com sucesso!');
+        await loadPendingWithdrawals();
+        await loadTransactions();
+      } catch (error) {
+        showError('Erro ao aprovar saque: ' + error.message);
+      }
+    }
+
+    async function rejectWithdrawal(id) {
+      const reason = prompt('Motivo da rejeição:');
+      if (!reason) {
+        return;
+      }
+
+      try {
+        await AdminAPI.rejectWithdrawal(id, reason);
+        showSuccess('Saque rejeitado. Saldo devolvido ao usuário.');
+        await loadPendingWithdrawals();
+        await loadTransactions();
+      } catch (error) {
+        showError('Erro ao rejeitar saque: ' + error.message);
+      }
+    }
+
+    async function loadFraudAlerts() {
+      try {
+        const result = await AdminAPI.getFraudAlerts(50, false);
+        
+        if (result.alerts.length === 0) {
+          document.getElementById('fraudAlertsTable').innerHTML = 
+            '<p class="text-center text-muted">Nenhum alerta de fraude ativo</p>';
+          return;
+        }
+
+        let html = `
+          <table>
+            <thead>
+              <tr>
+                <th>Usuário</th>
+                <th>Tipo</th>
+                <th>Severidade</th>
+                <th>Descrição</th>
+                <th>Data</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        result.alerts.forEach(alert => {
+          const severityClass = {
+            'low': 'status-pending',
+            'medium': 'status-pending',
+            'high': 'status-failed',
+            'critical': 'status-refunded'
+          }[alert.severity];
+
+          html += `
+            <tr>
+              <td>${alert.username}<br><small class="text-muted">${alert.email}</small></td>
+              <td>${alert.alert_type.replace(/_/g, ' ')}</td>
+              <td><span class="status-badge ${severityClass}">${alert.severity.toUpperCase()}</span></td>
+              <td><small>${alert.description}</small></td>
+              <td>${formatDate(alert.created_at)}</td>
+              <td>
+                <button onclick="resolveFraudAlert('${alert.id}')" class="btn btn-outline" style="padding: 6px 12px; font-size: 14px;">✓ Resolver</button>
+              </td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table>';
+        document.getElementById('fraudAlertsTable').innerHTML = html;
+      } catch (error) {
+        document.getElementById('fraudAlertsTable').innerHTML = 
+          `<p class="text-center text-muted">Erro: ${error.message}</p>`;
+      }
+    }
+
+    async function resolveFraudAlert(id) {
+      if (!confirm('Marcar este alerta como resolvido?')) {
+        return;
+      }
+
+      try {
+        await AdminAPI.resolveFraudAlert(id);
+        showSuccess('Alerta de fraude resolvido');
+        await loadFraudAlerts();
+      } catch (error) {
+        showError('Erro ao resolver alerta: ' + error.message);
+      }
+    }
+
+    // ========== WEBHOOKS ==========
+
+    async function loadWebhooks() {
+      try {
+        const result = await AdminAPI.listWebhooks(1, 20);
+        
+        if (!result.webhooks || result.webhooks.length === 0) {
+          document.getElementById('webhooksTable').innerHTML = 
+            '<p class="text-center text-muted">Nenhum webhook configurado</p>';
+          return;
+        }
+
+        let html = `
+          <table>
+            <thead>
+              <tr>
+                <th>URL</th>
+                <th>Transações</th>
+                <th>Saques</th>
+                <th>Criado em</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        result.webhooks.forEach(webhook => {
+          const txIcon = webhook.send_transaction_event ? '✅' : '❌';
+          const wdIcon = webhook.send_withdraw_event ? '✅' : '❌';
+
+          html += `
+            <tr>
+              <td><small>${webhook.url}</small></td>
+              <td style="text-align: center;">${txIcon}</td>
+              <td style="text-align: center;">${wdIcon}</td>
+              <td>${formatDate(webhook.created_at)}</td>
+              <td>
+                <button onclick="deleteWebhook('${webhook.webhook_id || webhook.unic_id}')" class="btn btn-danger" style="padding: 6px 12px; font-size: 14px;">🗑️ Deletar</button>
+              </td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table>';
+        document.getElementById('webhooksTable').innerHTML = html;
+      } catch (error) {
+        document.getElementById('webhooksTable').innerHTML = 
+          `<p class="text-center text-muted">Erro ao carregar webhooks: ${error.message}</p>`;
+      }
+    }
+
+    async function createWebhook() {
+      const url = document.getElementById('webhookUrl').value;
+      const sendTx = document.getElementById('sendTransactionEvent').checked;
+      const sendWd = document.getElementById('sendWithdrawEvent').checked;
+      const createBtn = document.getElementById('createWebhookBtn');
+      const createLoading = document.getElementById('createWebhookLoading');
+
+      if (!url) {
+        showError('URL do webhook é obrigatória');
+        return;
+      }
+
+      createBtn.classList.add('hidden');
+      createLoading.classList.remove('hidden');
+
+      try {
+        await AdminAPI.createWebhook({
+          url: url,
+          sendTransactionEvent: sendTx,
+          sendWithdrawEvent: sendWd
+        });
+        showSuccess('Webhook criado com sucesso!');
+        document.getElementById('webhookUrl').value = '';
+        await loadWebhooks();
+      } catch (error) {
+        showError('Erro ao criar webhook: ' + error.message);
+      } finally {
+        createBtn.classList.remove('hidden');
+        createLoading.classList.add('hidden');
+      }
+    }
+
+    async function deleteWebhook(webhookId) {
+      if (!confirm('Tem certeza que deseja deletar este webhook?')) {
+        return;
+      }
+
+      try {
+        await AdminAPI.deleteWebhook(webhookId);
+        showSuccess('Webhook deletado com sucesso!');
+        await loadWebhooks();
+      } catch (error) {
+        showError('Erro ao deletar webhook: ' + error.message);
+      }
+    }
+
+    // Load initial data
+    loadRTP();
+    loadBullsPayBalance();
+    loadTransactions();
+    loadBullsPayTransactions();
+    loadBullsPayWithdrawals();
+    loadUsers();
+    loadPendingWithdrawals();
+    loadFraudAlerts();
+    loadWebhooks();
+  </script>
+</body>
+</html>

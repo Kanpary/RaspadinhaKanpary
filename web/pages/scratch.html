@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raspadinha - RaspadinhaKanpary</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .scratch-card {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      background: radial-gradient(600px 300px at 50% 0%, #1b2140, #12182f);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      min-height: 350px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .scratch-content {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      text-align: center;
+      padding: 40px;
+    }
+
+    .prize-text {
+      font-size: 64px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ffd76d, #fff2a6, #ffd76d);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
+    }
+
+    .scratch-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, #7c4dff, #21c17a);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 700;
+      color: white;
+      z-index: 10;
+      transition: opacity 1.5s ease-out;
+    }
+
+    .scratch-overlay.scratching {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    canvas#scratchCanvas {
+      position: absolute;
+      inset: 0;
+      z-index: 11;
+    }
+
+    .bet-selector {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 20px 0;
+    }
+
+    .bet-option {
+      padding: 12px 24px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-input);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .bet-option:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .bet-option.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+
+    .confetti {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 999;
+      display: none;
+    }
+
+    .confetti.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <div class="logo-icon"></div>
+        <div class="logo-text">RaspadinhaKanpary</div>
+      </div>
+    </div>
+
+    <div class="back-button">
+      <a href="/pages/profile.html" class="btn btn-outline">← Voltar ao Perfil</a>
+    </div>
+
+    <div class="card balance-card" style="max-width: 600px; margin: 20px auto;">
+      <div class="balance-label">Saldo Disponível</div>
+      <div class="balance-amount" id="balanceAmount">R$ 0,00</div>
+      <div id="rolloverInfo" class="hidden" style="margin-top: 12px; padding: 12px; background: rgba(243, 156, 18, 0.1); border-radius: 8px; border-left: 4px solid #f39c12;">
+        <p style="font-size: 14px; margin: 0;">
+          <strong>⚠️ Rollover pendente:</strong> <span id="rolloverAmount">R$ 0,00</span>
+        </p>
+        <p style="font-size: 12px; margin: 4px 0 0 0; opacity: 0.8;">
+          Aposte esse valor para liberar saques
+        </p>
+      </div>
+    </div>
+
+    <div class="card" style="max-width: 600px; margin: 20px auto;">
+      <h2 class="text-center">🎰 Raspadinha</h2>
+      <p class="text-center text-muted mb-20">Escolha sua aposta e tente a sorte!</p>
+
+      <div id="errorMsg" class="alert alert-danger hidden"></div>
+
+      <div class="bet-selector">
+        <div class="bet-option" onclick="selectBet(0.50)">R$ 0,50</div>
+        <div class="bet-option active" onclick="selectBet(1.00)">R$ 1,00</div>
+        <div class="bet-option" onclick="selectBet(1.50)">R$ 1,50</div>
+        <div class="bet-option" onclick="selectBet(2.00)">R$ 2,00</div>
+        <div class="bet-option" onclick="selectBet(3.00)">R$ 3,00</div>
+        <div class="bet-option" onclick="selectBet(5.00)">R$ 5,00</div>
+        <div class="bet-option" onclick="selectBet(10.00)">R$ 10,00</div>
+        <div class="bet-option" onclick="selectBet(15.00)">R$ 15,00</div>
+        <div class="bet-option" onclick="selectBet(20.00)">R$ 20,00</div>
+        <div class="bet-option" onclick="selectBet(25.00)">R$ 25,00</div>
+        <div class="bet-option" onclick="selectBet(30.00)">R$ 30,00</div>
+        <div class="bet-option" onclick="selectBet(35.00)">R$ 35,00</div>
+        <div class="bet-option" onclick="selectBet(40.00)">R$ 40,00</div>
+        <div class="bet-option" onclick="selectBet(45.00)">R$ 45,00</div>
+        <div class="bet-option" onclick="selectBet(50.00)">R$ 50,00</div>
+      </div>
+      <p class="text-center text-muted" style="font-size: 14px; margin-top: 12px;">
+        💡 Apostas maiores têm melhores chances de ganhar!
+      </p>
+
+      <div class="scratch-card">
+        <div class="scratch-content">
+          <div style="color: #b7c0d1; font-size: 18px; font-weight: 600;">Seu Prêmio</div>
+          <div class="prize-text" id="prizeText">R$ 0,00</div>
+          <div style="color: #b7c0d1;" id="prizeLabel">Clique em "Raspar Agora"</div>
+        </div>
+        <div class="scratch-overlay" id="scratchOverlay">
+          ✨ Raspe para Revelar ✨
+        </div>
+        <canvas id="scratchCanvas"></canvas>
+      </div>
+
+      <button onclick="playScratch()" class="btn btn-success" style="width: 100%; margin-top: 20px; font-size: 18px;">
+        <span id="scratchBtn">🎰 Raspar Agora</span>
+        <span id="scratchLoading" class="loading hidden"></span>
+      </button>
+    </div>
+
+    <div class="footer">
+      <p class="text-muted" style="margin-bottom: 12px;">Dúvidas, sugestões ou suporte?</p>
+      <a href="https://t.me/Kanpary" target="_blank" class="telegram-contact">
+        <span class="telegram-icon">✈</span>
+        <span>Fale conosco no Telegram</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="confetti" id="confetti"></div>
+
+  <script src="/js/api.js"></script>
+  <script>
+    requireAuth();
+
+    let selectedBet = 1.0;
+    let isPlaying = false;
+
+    function selectBet(amount) {
+      selectedBet = amount;
+      document.querySelectorAll('.bet-option').forEach(el => {
+        el.classList.remove('active');
+        if (el.textContent === `R$ ${amount.toFixed(2).replace('.', ',')}`) {
+          el.classList.add('active');
+        }
+      });
+    }
+
+    async function loadBalance() {
+      try {
+        const result = await WalletAPI.getBalance();
+        document.getElementById('balanceAmount').textContent = formatMoney(result.balance);
+        
+        // Mostrar rollover se existir
+        if (result.rollover_required && result.rollover_required > 0) {
+          document.getElementById('rolloverInfo').classList.remove('hidden');
+          document.getElementById('rolloverAmount').textContent = formatMoney(result.rollover_required);
+        } else {
+          document.getElementById('rolloverInfo').classList.add('hidden');
+        }
+      } catch (error) {
+        showError('Erro ao carregar saldo: ' + error.message);
+      }
+    }
+
+    // Atualizar saldo automaticamente a cada 3 segundos durante o jogo
+    setInterval(() => {
+      if (!isPlaying) {
+        loadBalance();
+      }
+    }, 3000);
+
+    async function playScratch() {
+      if (isPlaying) return;
+
+      const errorMsg = document.getElementById('errorMsg');
+      const scratchBtn = document.getElementById('scratchBtn');
+      const scratchLoading = document.getElementById('scratchLoading');
+
+      errorMsg.classList.add('hidden');
+      scratchBtn.classList.add('hidden');
+      scratchLoading.classList.remove('hidden');
+      isPlaying = true;
+
+      try {
+        const result = await GameAPI.playScratch(selectedBet);
+        
+        // Update prize display
+        document.getElementById('prizeText').textContent = formatMoney(result.prize);
+        document.getElementById('prizeLabel').textContent = 
+          result.prize > 0 ? `Multiplicador: ${result.multiplier.toFixed(2)}x` : 'Não foi desta vez...';
+
+        // Animate scratch
+        animateScratch();
+
+        // Show confetti if won
+        if (result.prize > 0) {
+          setTimeout(() => showConfetti(), 1500);
+        }
+
+        // Update balance immediately after game
+        await loadBalance();
+
+        // Reset after 2 seconds
+        setTimeout(() => {
+          resetCard();
+        }, 2000);
+      } catch (error) {
+        errorMsg.textContent = error.message;
+        errorMsg.classList.remove('hidden');
+        scratchBtn.classList.remove('hidden');
+        scratchLoading.classList.add('hidden');
+        isPlaying = false;
+      }
+    }
+
+    function animateScratch() {
+      const overlay = document.getElementById('scratchOverlay');
+      overlay.classList.add('scratching');
+    }
+
+    function resetCard() {
+      const overlay = document.getElementById('scratchOverlay');
+      overlay.classList.remove('scratching');
+      
+      document.getElementById('prizeText').textContent = 'R$ 0,00';
+      document.getElementById('prizeLabel').textContent = 'Clique em "Raspar Agora"';
+      document.getElementById('scratchBtn').classList.remove('hidden');
+      document.getElementById('scratchLoading').classList.add('hidden');
+      
+      isPlaying = false;
+    }
+
+    function showConfetti() {
+      const confettiEl = document.getElementById('confetti');
+      confettiEl.classList.add('active');
+      
+      for (let i = 0; i < 100; i++) {
+        const confetti = document.createElement('div');
+        confetti.style.position = 'absolute';
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.top = '-10px';
+        confetti.style.width = '10px';
+        confetti.style.height = '10px';
+        confetti.style.backgroundColor = ['#ffd76d', '#7c4dff', '#21c17a', '#e74c3c'][Math.floor(Math.random() * 4)];
+        confetti.style.opacity = '0.8';
+        confetti.style.animation = `fall ${2 + Math.random() * 2}s linear`;
+        confettiEl.appendChild(confetti);
+      }
+
+      setTimeout(() => {
+        confettiEl.classList.remove('active');
+        confettiEl.innerHTML = '';
+      }, 4000);
+    }
+
+    // Add CSS animation for confetti
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes fall {
+        to {
+          transform: translateY(100vh) rotate(360deg);
+          opacity: 0;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+
+    loadBalance();
+  </script>
+</body>
+</html>
