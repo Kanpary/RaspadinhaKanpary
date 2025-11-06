@@ -5,18 +5,14 @@ dotenv.config();
 
 const { Pool } = pg;
 
+// Configuração SSL para Render
 const sslConfig = () => {
+  // Se for localhost (desenvolvimento), não usa SSL
   if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('localhost')) {
     return false;
   }
-  
-  if (process.env.NODE_ENV === 'production') {
-    return {
-      rejectUnauthorized: true,
-      ca: process.env.DATABASE_CA_CERT
-    };
-  }
-  
+
+  // Em produção (Render), força SSL sem validar certificado
   return {
     rejectUnauthorized: false
   };
@@ -62,7 +58,7 @@ export async function initDatabase() {
       END $$;
     `);
 
-    // Tabela de transações (depósitos e saques)
+    // Tabela de transações
     await client.query(`
       CREATE TABLE IF NOT EXISTS transactions (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -83,7 +79,7 @@ export async function initDatabase() {
       )
     `);
 
-    // Adicionar colunas novas se não existirem
+    // Colunas extras
     await client.query(`
       DO $$ BEGIN
         ALTER TABLE transactions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
@@ -93,7 +89,7 @@ export async function initDatabase() {
       END $$;
     `);
 
-    // Atualizar constraint de status para incluir novos valores
+    // Constraint de status
     await client.query(`
       DO $$ BEGIN
         ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transactions_status_check;
@@ -104,7 +100,7 @@ export async function initDatabase() {
       END $$;
     `);
 
-    // Índices para transações
+    // Índices
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
       CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
@@ -126,13 +122,12 @@ export async function initDatabase() {
       )
     `);
 
-    // Índices para game_rounds
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_game_rounds_user_id ON game_rounds(user_id);
       CREATE INDEX IF NOT EXISTS idx_game_rounds_created_at ON game_rounds(created_at DESC);
     `);
 
-    // Tabela de configurações (RTP e outras configs)
+    // Configurações
     await client.query(`
       CREATE TABLE IF NOT EXISTS settings (
         key VARCHAR(100) PRIMARY KEY,
@@ -142,14 +137,13 @@ export async function initDatabase() {
       )
     `);
 
-    // Inserir configuração padrão de RTP se não existir
     await client.query(`
       INSERT INTO settings (key, value, description)
       VALUES ('rtp_percentage', '95.0', 'Return to Player percentage for scratch cards')
       ON CONFLICT (key) DO NOTHING
     `);
 
-    // Tabela de alertas de fraude
+    // Alertas de fraude
     await client.query(`
       CREATE TABLE IF NOT EXISTS fraud_alerts (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -165,7 +159,6 @@ export async function initDatabase() {
       )
     `);
 
-    // Índices para fraud_alerts
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_fraud_alerts_user_id ON fraud_alerts(user_id);
       CREATE INDEX IF NOT EXISTS idx_fraud_alerts_severity ON fraud_alerts(severity);
@@ -173,7 +166,7 @@ export async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_fraud_alerts_created_at ON fraud_alerts(created_at DESC);
     `);
 
-    // Criar função para atualizar updated_at automaticamente
+    // Função updated_at
     await client.query(`
       CREATE OR REPLACE FUNCTION update_updated_at_column()
       RETURNS TRIGGER AS $$
@@ -184,7 +177,7 @@ export async function initDatabase() {
       $$ language 'plpgsql';
     `);
 
-    // Triggers para updated_at
+    // Triggers
     await client.query(`
       DROP TRIGGER IF EXISTS update_users_updated_at ON users;
       CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
