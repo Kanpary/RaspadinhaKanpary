@@ -63,25 +63,31 @@
     </div>
 
     <div class="card">
-      <h3>Informações da Conta</h3>
-      <table>
-        <tr>
-          <td><strong>Usuário:</strong></td>
-          <td id="username"></td>
-        </tr>
-        <tr>
-          <td><strong>Email:</strong></td>
-          <td id="email"></td>
-        </tr>
-        <tr>
-          <td><strong>CPF:</strong></td>
-          <td id="cpf"></td>
-        </tr>
-        <tr>
-          <td><strong>Cadastro:</strong></td>
-          <td id="createdAt"></td>
-        </tr>
-      </table>
+      <button onclick="toggleAccountInfo()" class="btn btn-outline" style="width: 100%;" id="toggleAccountBtn">
+        👤 Ver Informações da Conta
+      </button>
+      
+      <div id="accountInfo" class="hidden" style="margin-top: 20px;">
+        <h3>Informações da Conta</h3>
+        <table>
+          <tr>
+            <td><strong>Usuário:</strong></td>
+            <td id="username"></td>
+          </tr>
+          <tr>
+            <td><strong>Email:</strong></td>
+            <td id="email"></td>
+          </tr>
+          <tr>
+            <td><strong>CPF:</strong></td>
+            <td id="cpf"></td>
+          </tr>
+          <tr>
+            <td><strong>Cadastro:</strong></td>
+            <td id="createdAt"></td>
+          </tr>
+        </table>
+      </div>
     </div>
 
     <div id="adminSection" class="card hidden">
@@ -159,6 +165,19 @@
         window.location.href = '/';
       } catch (error) {
         showError('Erro ao sair: ' + error.message);
+      }
+    }
+
+    function toggleAccountInfo() {
+      const accountInfo = document.getElementById('accountInfo');
+      const toggleBtn = document.getElementById('toggleAccountBtn');
+      
+      if (accountInfo.classList.contains('hidden')) {
+        accountInfo.classList.remove('hidden');
+        toggleBtn.textContent = '🔼 Ocultar Informações da Conta';
+      } else {
+        accountInfo.classList.add('hidden');
+        toggleBtn.textContent = '👤 Ver Informações da Conta';
       }
     }
 
