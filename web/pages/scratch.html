@@ -181,6 +181,11 @@
         <span id="scratchBtn">🎰 Raspar Agora</span>
         <span id="scratchLoading" class="loading hidden"></span>
       </button>
+
+      <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); text-align: center;">
+        <p style="color: #b7c0d1; font-size: 14px; margin: 0 0 8px 0;">💰 Seu Saldo Atual</p>
+        <p style="color: #21c17a; font-size: 24px; font-weight: 700; margin: 0;" id="currentBalance">R$ 0,00</p>
+      </div>
     </div>
 
     <div class="footer">
@@ -215,6 +220,7 @@
       try {
         const result = await WalletAPI.getBalance();
         document.getElementById('balanceAmount').textContent = formatMoney(result.balance);
+        document.getElementById('currentBalance').textContent = formatMoney(result.balance);
         
         // Mostrar rollover se existir
         if (result.rollover_required && result.rollover_required > 0) {
