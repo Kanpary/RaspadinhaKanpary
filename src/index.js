@@ -412,8 +412,8 @@ app.post('/api/admin/rtp', authMiddleware, adminMiddleware, async (req, res, nex
   try {
     const { rtp_percentage } = req.body;
     
-    if (!rtp_percentage || rtp_percentage < 50 || rtp_percentage > 99) {
-      return res.status(400).json({ error: 'RTP deve estar entre 50% e 99%' });
+    if (rtp_percentage === null || rtp_percentage === undefined || rtp_percentage < 0 || rtp_percentage > 100) {
+      return res.status(400).json({ error: 'RTP deve estar entre 0% e 100%' });
     }
 
     await setSetting('rtp_percentage', rtp_percentage.toString(), 'Return to Player percentage for scratch cards');
