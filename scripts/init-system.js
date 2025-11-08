@@ -6,8 +6,19 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const { Pool } = pg;
+
+const sslConfig = () => {
+  if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('localhost')) {
+    return false;
+  }
+  return {
+    rejectUnauthorized: false
+  };
+};
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: sslConfig()
 });
 
 const SALT_ROUNDS = 10;
