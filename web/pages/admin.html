@@ -23,7 +23,7 @@
         
         <div class="form-group">
           <label>RTP Atual: <strong id="currentRtp">--</strong>%</label>
-          <input type="number" id="rtpInput" class="form-control" min="50" max="99" step="0.1" value="95.0">
+          <input type="number" id="rtpInput" class="form-control" min="0" max="100" step="0.1" value="95.0">
         </div>
 
         <button onclick="updateRTP()" class="btn btn-primary" style="width: 100%;">
@@ -200,8 +200,8 @@
       const rtpBtn = document.getElementById('rtpBtn');
       const rtpLoading = document.getElementById('rtpLoading');
 
-      if (rtpValue < 50 || rtpValue > 99) {
-        showError('RTP deve estar entre 50% e 99%');
+      if (rtpValue < 0 || rtpValue > 100) {
+        showError('RTP deve estar entre 0% e 100%');
         return;
       }
 
@@ -345,10 +345,11 @@
         result.transactions.forEach(tx => {
           const statusClass = `status-${tx.status}`;
           const statusLabel = tx.status.toUpperCase();
+          const displayId = tx.unic_id ? tx.unic_id.substring(0, 8) + '...' : 'N/A';
 
           html += `
             <tr>
-              <td><small>${tx.unic_id.substring(0, 8)}...</small></td>
+              <td><small>${displayId}</small></td>
               <td>${formatMoney(tx.total_value / 100)}</td>
               <td>${tx.buyerData?.buyer_name || 'N/A'}<br><small class="text-muted">${tx.buyerData?.buyer_email || ''}</small></td>
               <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
@@ -394,10 +395,11 @@
         result.withdrawals.forEach(wd => {
           const statusClass = `status-${wd.status}`;
           const statusLabel = wd.status.toUpperCase();
+          const displayId = wd.unic_id ? wd.unic_id.substring(0, 8) + '...' : 'N/A';
 
           html += `
             <tr>
-              <td><small>${wd.unic_id.substring(0, 8)}...</small></td>
+              <td><small>${displayId}</small></td>
               <td>${formatMoney(wd.amount / 100)}</td>
               <td>${wd.pix_key_type}: ${wd.pix_key}</td>
               <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
