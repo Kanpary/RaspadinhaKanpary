@@ -74,6 +74,7 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script src="/js/api.js"></script>
   <script>
     requireAuth();
@@ -112,16 +113,29 @@
         document.getElementById('depositAmount').textContent = formatMoney(parseFloat(amount));
 
         // Display QR code
+        const qrCodeContainer = document.getElementById('qrCodeImage');
+        const pixCode = result.qr_code || '';
+        
         if (result.qr_code_base64) {
-          document.getElementById('qrCodeImage').innerHTML = 
+          qrCodeContainer.innerHTML = 
             `<img src="data:image/png;base64,${result.qr_code_base64}" style="max-width: 300px; border-radius: 12px; box-shadow: 0 4px 12px var(--shadow);">`;
+        } else if (pixCode && window.QRCode) {
+          qrCodeContainer.innerHTML = '<canvas id="qrCanvas"></canvas>';
+          QRCode.toCanvas(document.getElementById('qrCanvas'), pixCode, {
+            width: 300,
+            margin: 2,
+            color: {
+              dark: '#000000',
+              light: '#FFFFFF'
+            }
+          });
         } else {
-          document.getElementById('qrCodeImage').innerHTML = 
-            '<p class="text-danger">QR Code não disponível no momento</p>';
+          qrCodeContainer.innerHTML = 
+            '<p class="text-danger">QR Code não disponível. Use o código PIX abaixo.</p>';
         }
 
         // Display PIX code
-        document.getElementById('pixCode').value = result.qr_code || 'Código PIX não disponível';
+        document.getElementById('pixCode').value = pixCode || 'Código PIX não disponível';
 
         // Start checking status and countdown
         startStatusCheck();
@@ -145,7 +159,6 @@
           document.getElementById('statusCheck').className = 'alert alert-danger text-center';
           document.getElementById('statusCheck').innerHTML = 
             '<p><strong>⏰ Tempo expirado</strong></p><p class="text-muted">Este QR Code não é mais válido</p>';
-          document.getElementById('timeRemaining').textContent = 'Tempo expirado';
           return;
         }
         
